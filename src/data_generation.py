@@ -162,6 +162,8 @@ def generate_data(
     # Store the data in 3 separate files (it's easier since orqviz.io.save_viz_object
     # already dumps each data structure in a single file)
     if directory_name is None:
+        if not os.path.exists(os.path.join(os.getcwd(), "results")):
+            os.mkdir(os.path.join(os.getcwd(), "results"))
         directory_name = os.path.join(os.getcwd(), f"results/data_{timestamp_str}")
         if not os.path.exists(os.path.join(os.getcwd(), "results")):
             os.mkdir(os.path.join(os.getcwd(), "results"))
@@ -304,19 +306,23 @@ def load_data(
 
 
 def save_hamiltonians(
-    hamiltonians_dict: Dict[str, PauliSum], timestamp_str: Optional[str] = None
+    hamiltonians_dict: Dict[str, PauliSum], timestamp_str: Optional[str] = None, directory_name: Optional[str] = "results/hamiltonians"
 ):
 
     if timestamp_str is None:
         timestamp_str = generate_timestamp_str()
-    directory_name = "results/hamiltonians"
+  
     directory_name = f"{directory_name}_{timestamp_str}"
     # check if directory exists and create it if not
+    if not os.path.exists(os.path.join(os.getcwd(), "results")):
+        os.mkdir(os.path.join(os.getcwd(), "results"))
     if not os.path.exists(directory_name):
         os.mkdir(directory_name)
     for label, hamiltonian in hamiltonians_dict.items():
         file_name = "{}.json".format(label)
         save_operator(hamiltonian, os.path.join(directory_name, file_name))
+
+
 
 
 def load_hamiltonians(directory_name: str) -> Dict[str, PauliSum]:

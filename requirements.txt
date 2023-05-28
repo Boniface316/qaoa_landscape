@@ -1,0 +1,9 @@
+# for the following libraries: the latest version from github as of this writing (not released yet)
+git+https://github.com/zapatacomputing/orqviz@a47764d6154d701ab040fac91d4b232b5bb9bb25#egg=orqviz
+orquestra-vqa
+numdifftools
+boto3
+orquestra-quantum==0.6.0
+git+https://github.com/zapatacomputing/orquestra-qulacs@4c56774#egg=orquestra-qulacs
+
+

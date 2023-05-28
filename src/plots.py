@@ -19,6 +19,7 @@ plt.rcParams["figure.dpi"] = 500
 def custom_fourier_plot(
     fourier_result: orqviz.fourier.FourierResult, fig, ax, fourier_res_x, fourier_res_y
 ):
+    breakpoint()
 
     raw_values = fourier_result.values
     size = raw_values.shape[0]
