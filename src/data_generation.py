@@ -2,34 +2,29 @@ import json
 import operator
 import os
 from functools import lru_cache, partial, reduce
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-import boto3
 import numpy as np
 import orqviz
 from orquestra.quantum.api.backend import QuantumSimulator
 from orquestra.quantum.circuits import CNOT, RX, RZ, Circuit, H, create_layer_of_gates
-from orquestra.quantum.evolution import time_evolution
-from orquestra.quantum.operators import PauliSum, load_operator, save_operator
-from orquestra.quantum.utils import create_symbols_map
-from orquestra.vqa.ansatz.qaoa_farhi import QAOAFarhiAnsatz
-
-from .metrics import (
-    roughness_fourier_enrico_2d,
-    roughness_fourier_sparsity,
-    roughness_fourier_sparsity_using_norms,
-    roughness_tv,
-    roughness_tv_from_scan,
-    tv_numerical_integration,
+from orquestra.quantum.operators import (
+    PauliSum,
+    PauliTerm,
+    load_operator,
+    save_operator,
 )
-from .utils import calculate_period_using_fourier, generate_timestamp_str
+from orqviz.scans import Scan2DResult
+
+from .metrics import roughness_fourier_sparsity_using_norms, roughness_tv
+from .utils import generate_timestamp_str
 
 tau = np.pi * 2
 
 
 @lru_cache(maxsize=256)
 def time_evolution_cost(
-    hamiltonian, time, method: str = "Trotter", trotter_order: int = 1
+    hamiltonian: PauliSum, time: int, method: str = "Trotter", trotter_order: int = 1
 ):
 
     return reduce(
@@ -42,7 +37,7 @@ def time_evolution_cost(
     )
 
 
-def time_evolution_for_term(term, time):
+def time_evolution_for_term(term: PauliTerm, time:int):
     base_changes = []
     base_reversals = []
     cnot_gates = []
@@ -87,18 +82,18 @@ def time_evolution_for_term(term, time):
 
 
 @lru_cache(maxsize=256)
-def time_evolution_for_term_cost(term, coeff):
+def time_evolution_for_term_cost(term: PauliTerm, coeff: float):
     return time_evolution_for_term(term, coeff)
 
 
 @lru_cache(maxsize=256)
-def time_evolution_for_term_mixer(term, coeff):
+def time_evolution_for_term_mixer(term: PauliTerm, coeff: float):
     return time_evolution_for_term(term, coeff)
 
 
 @lru_cache(maxsize=256)
 def time_evolution_mixer(
-    hamiltonian, time, method: str = "Trotter", trotter_order: int = 1
+    hamiltonian: PauliSum, time: int, method: str = "Trotter", trotter_order: int = 1
 ):
 
     return reduce(
@@ -134,7 +129,6 @@ def prepare_cost_function(
 
     return partial(loss_function, mixer_hamiltonian, operator, number_of_qubits)
 
-
 def generate_data(
     cost_function: orqviz.aliases.LossFunction,
     origin: orqviz.aliases.ParameterVector,
@@ -143,11 +137,11 @@ def generate_data(
     file_label: str,  # perhaps a string representing the operator
     scan_resolution: int,
     cost_period: List[float],
-    fourier_period: Tuple[np.ndarray, int, int],
-    directory_name: Optional[str] = None,
+    fourier_period: List[float],
+    directory_name: str = "data",
     timestamp_str: Optional[str] = None,
-    default_end_points: Tuple[float, float] = (-np.pi, np.pi),
-) -> Tuple[orqviz.scans.Scan2DResult, orqviz.fourier.FourierResult, Dict[str, float]]:
+    end_points: Tuple[float, float] = (-np.pi, np.pi),
+) -> Tuple[Scan2DResult, Scan2DResult, Dict[str, Any]]:
     """
     period: the size of the period in each direction. A 1-d array with the same size
     as the cost function's input parameters.
@@ -155,29 +149,47 @@ def generate_data(
     purposes. does not impact metrics.
 
     """
+
     if timestamp_str is None:
         timestamp_str = generate_timestamp_str()
 
-    # Store in files called "<file_label>_<YYYY_MM_DD_HH_mm_ss timestamp>_<data_type>"
-    # Store the data in 3 separate files (it's easier since orqviz.io.save_viz_object
-    # already dumps each data structure in a single file)
-    if directory_name is None:
-        if not os.path.exists(os.path.join(os.getcwd(), "results")):
-            os.mkdir(os.path.join(os.getcwd(), "results"))
-        directory_name = os.path.join(os.getcwd(), f"results/data_{timestamp_str}")
-        if not os.path.exists(os.path.join(os.getcwd(), "results")):
-            os.mkdir(os.path.join(os.getcwd(), "results"))
-
-    if not os.path.exists(directory_name):
-        os.mkdir(directory_name)
+    directory_name = check_and_create_directory(directory_name, timestamp_str)
 
     tv = roughness_tv(cost_function, origin, M=200, m=200)[0]
 
-    dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y = get_scan_variables(
-        dir_x, dir_y, cost_period, default_end_points
+    # GETTING DATA FOR REGULAR PLOTS
+    # Generate the data for the following, using orqviz data structures:
+    # Landscape
+
+    scan2D_result = perform_2D_scan(cost_function, origin, scan_resolution, dir_x,
+                                    dir_y, cost_period, end_points)
+
+    fourier_result = perform_Fourier_scan(cost_function, origin, scan_resolution,
+                                          dir_x, dir_y, fourier_period, end_points)
+
+    # Metrics
+    metrics_dict = _generate_metrics_dict(scan2D_result, fourier_result, tv)
+
+    save_scan_results(
+        scan2D_result, fourier_result, metrics_dict, directory_name, file_label
     )
 
-    scan2D_result = orqviz.scans.perform_2D_scan(
+    return scan2D_result, fourier_result, metrics_dict
+
+
+def perform_2D_scan(cost_function: orqviz.aliases.LossFunction,
+                    origin: orqviz.aliases.ParameterVector,
+                    scan_resolution: int,
+                    dir_x: orqviz.aliases.DirectionVector,
+                    dir_y: orqviz.aliases.DirectionVector,
+                    cost_period: List[float],
+                    end_points: Tuple[float, float]):
+
+    dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y = get_scan_variables(
+        dir_x, dir_y, cost_period, end_points
+    )
+
+    return orqviz.scans.perform_2D_scan(
         origin,
         cost_function,
         direction_x=dir_x,
@@ -187,12 +199,20 @@ def generate_data(
         end_points_y=scan2D_end_points_y,
     )
 
-    # GETTING DATA FOR FOURIER PLOTS
 
-    scan2D_end_points_x, scan2D_end_points_y = get_fourier_plot_variables(
-        fourier_period, default_end_points
+def perform_Fourier_scan(cost_function: orqviz.aliases.LossFunction,
+                         origin: orqviz.aliases.ParameterVector,
+                         scan_resolution: int,
+                         dir_x: orqviz.aliases.DirectionVector,
+                         dir_y: orqviz.aliases.DirectionVector,
+                         fourier_period: List[float],
+                         end_points: Tuple[float, float]):
+
+    dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y = get_fourier_plot_variables(
+        dir_x, dir_y, fourier_period, end_points,
     )
 
+    # GETTING DATA FOR FOURIER PLOTS
     scan2D_result_for_fourier = orqviz.scans.perform_2D_scan(
         origin,
         cost_function,
@@ -208,14 +228,89 @@ def generate_data(
         scan2D_result_for_fourier, scan2D_end_points_x, scan2D_end_points_y
     )
 
-    # Metrics
-    metrics_dict = _generate_metrics_dict(scan2D_result, fourier_result, tv)
+    return fourier_result
 
-    save_scan_results(
-        scan2D_result, fourier_result, metrics_dict, directory_name, file_label
+
+def _generate_metrics_dict(
+    scan2D_result: orqviz.scans.Scan2DResult,
+    fourier_result: orqviz.fourier.FourierResult,
+    tv: float,
+) -> Dict[str, float]:
+    # If there is a custom plot period, this fourier result input will not be with the
+    # lowest possible frequencies of this coefficient. thus the non-sparsity metrics
+    # wil be wrong.
+    # tv_from_scan = roughness_tv_from_scan(scan2D_result)
+    # fourier_max, fourier_mean = roughness_fourier_enrico_2d(fourier_result)
+    # sparsity = roughness_fourier_sparsity(fourier_result)
+    sparsity_from_norm = roughness_fourier_sparsity_using_norms(fourier_result)
+    return {
+        "tv": tv,
+        # "tv stdev over mean": tv_stdev_over_mean,
+        # "tv mean globally normalized": tv_mean_global_norm,
+        # "tv stdev over mean globally normalized": tb_stdev_global_norm,
+        # "tv from scan": tv_from_scan,
+        # "fourier max": fourier_max,
+        # "fourier mean": fourier_mean,
+        # "fourier sparsity": sparsity,
+        "fourier density using norms": sparsity_from_norm,
+    }
+
+
+def load_data(
+    directory_name: str, file_label: str
+) -> Tuple[orqviz.scans.Scan2DResult, orqviz.fourier.FourierResult, Dict[str, float]]:
+    scan2D_result = orqviz.io.load_viz_object(
+        os.path.join(directory_name, file_label + "_scan2D")
     )
+    fourier_result = orqviz.io.load_viz_object(
+        os.path.join(directory_name, file_label + "_scan_fourier")
+    )
+    with open(os.path.join(directory_name, file_label + "_metrics.json"), "r") as f:
+        metrics_dict = json.load(f)
 
     return scan2D_result, fourier_result, metrics_dict
+
+
+def save_hamiltonians(
+    hamiltonians_dict: Dict[str, PauliSum], timestamp_str: Optional[str] = None
+):
+
+    if timestamp_str is None:
+        timestamp_str = generate_timestamp_str()
+    directory_name = os.path.join(os.path.join(os.getcwd(), f"results/hamiltonians_{timestamp_str}"))
+    # check if directory exists and create it if not
+
+    if not os.path.exists(os.path.join(os.getcwd(), "results")):
+        os.mkdir(os.path.join(os.getcwd(), "results"))
+    if not os.path.exists(directory_name):
+        os.mkdir(directory_name)
+    for label, hamiltonian in hamiltonians_dict.items():
+        file_name = "{}.json".format(label)
+        save_operator(hamiltonian, os.path.join(directory_name, file_name))
+
+
+def load_hamiltonians(directory_name: str) -> Dict[str, PauliSum]:
+    hamiltonians_dict: Dict[str, PauliSum] = {}
+    for file_name in os.listdir(directory_name):
+        label = file_name[0:-5]  # remove ".json"
+        hamiltonians_dict[label] = load_operator(
+            os.path.join(directory_name, file_name)
+        )
+    return hamiltonians_dict
+
+
+def check_and_create_directory(directory_name: str, timestamp_str: str) -> str:
+    # check if directory exists and create it if not
+    if directory_name is None:
+        if not os.path.exists(os.path.join(os.getcwd(), "results")):
+            os.mkdir(os.path.join(os.getcwd(), "results"))
+            print(f"Created directory {os.path.join(os.getcwd(), 'results')}")
+    directory_name = os.path.join(os.getcwd(), f"results/data_{timestamp_str}")
+    if not os.path.exists(directory_name):
+        os.mkdir(directory_name)
+        print(f"Created directory {directory_name}")
+
+    return directory_name
 
 
 def get_scan_variables(
@@ -243,8 +338,14 @@ def get_scan_variables(
 
 
 def get_fourier_plot_variables(
-    fourier_period: Tuple[np.ndarray, int, int], default_end_points: Tuple[float, float]
+    dir_x: np.ndarray,
+    dir_y: np.ndarray,
+    fourier_period: List[float],
+    default_end_points: Tuple[float, float],
 ):
+    dir_x = dir_x / np.linalg.norm(dir_x)
+    dir_y = dir_y / np.linalg.norm(dir_y)
+
     freq_x = (2 * np.pi) / fourier_period[0]
     freq_y = (2 * np.pi) / fourier_period[1]
     scan2D_end_points_x = (
@@ -256,19 +357,7 @@ def get_fourier_plot_variables(
         default_end_points[1] / freq_y,
     )
 
-    return scan2D_end_points_x, scan2D_end_points_y
-
-
-def _generate_metrics_dict(
-    scan2D_result: orqviz.scans.Scan2DResult,
-    fourier_result: orqviz.fourier.FourierResult,
-    tv: float,
-) -> Dict[str, float]:
-    sparsity_from_norm = roughness_fourier_sparsity_using_norms(fourier_result)
-    return {
-        "tv": tv,
-        "fourier density using norms": sparsity_from_norm,
-    }
+    return dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y
 
 
 def save_scan_results(
@@ -288,48 +377,3 @@ def save_scan_results(
         json.dump(metrics_dict, f)
 
     print("Saved data to directory: ", directory_name)
-
-
-def load_data(
-    directory_name: str, file_label: str
-) -> Tuple[orqviz.scans.Scan2DResult, orqviz.fourier.FourierResult, Dict[str, float]]:
-    scan2D_result = orqviz.io.load_viz_object(
-        os.path.join(directory_name, file_label + "_scan2D")
-    )
-    fourier_result = orqviz.io.load_viz_object(
-        os.path.join(directory_name, file_label + "_scan_fourier")
-    )
-    with open(os.path.join(directory_name, file_label + "_metrics.json"), "r") as f:
-        metrics_dict = json.load(f)
-
-    return scan2D_result, fourier_result, metrics_dict
-
-
-def save_hamiltonians(
-    hamiltonians_dict: Dict[str, PauliSum], timestamp_str: Optional[str] = None, directory_name: Optional[str] = "results/hamiltonians"
-):
-
-    if timestamp_str is None:
-        timestamp_str = generate_timestamp_str()
-  
-    directory_name = f"{directory_name}_{timestamp_str}"
-    # check if directory exists and create it if not
-    if not os.path.exists(os.path.join(os.getcwd(), "results")):
-        os.mkdir(os.path.join(os.getcwd(), "results"))
-    if not os.path.exists(directory_name):
-        os.mkdir(directory_name)
-    for label, hamiltonian in hamiltonians_dict.items():
-        file_name = "{}.json".format(label)
-        save_operator(hamiltonian, os.path.join(directory_name, file_name))
-
-
-
-
-def load_hamiltonians(directory_name: str) -> Dict[str, PauliSum]:
-    hamiltonians_dict: Dict[str, PauliSum] = {}
-    for file_name in os.listdir(directory_name):
-        label = file_name[0:-5]  # remove ".json"
-        hamiltonians_dict[label] = load_operator(
-            os.path.join(directory_name, file_name)
-        )
-    return hamiltonians_dict
