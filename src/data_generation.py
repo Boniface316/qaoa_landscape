@@ -26,7 +26,6 @@ tau = np.pi * 2
 def time_evolution_cost(
     hamiltonian: PauliSum, time: int, method: str = "Trotter", trotter_order: int = 1
 ):
-
     return reduce(
         operator.add,
         (
@@ -37,7 +36,7 @@ def time_evolution_cost(
     )
 
 
-def time_evolution_for_term(term: PauliTerm, time:int):
+def time_evolution_for_term(term: PauliTerm, time: int):
     base_changes = []
     base_reversals = []
     cnot_gates = []
@@ -95,7 +94,6 @@ def time_evolution_for_term_mixer(term: PauliTerm, coeff: float):
 def time_evolution_mixer(
     hamiltonian: PauliSum, time: int, method: str = "Trotter", trotter_order: int = 1
 ):
-
     return reduce(
         operator.add,
         (
@@ -129,6 +127,7 @@ def prepare_cost_function(
 
     return partial(loss_function, mixer_hamiltonian, operator, number_of_qubits)
 
+
 def generate_data(
     cost_function: orqviz.aliases.LossFunction,
     origin: orqviz.aliases.ParameterVector,
@@ -157,15 +156,20 @@ def generate_data(
 
     tv = roughness_tv(cost_function, origin, M=200, m=200)[0]
 
+    dir_x = dir_x / np.linalg.norm(dir_x)
+    dir_y = dir_y / np.linalg.norm(dir_y)
+
     # GETTING DATA FOR REGULAR PLOTS
     # Generate the data for the following, using orqviz data structures:
     # Landscape
 
-    scan2D_result = perform_2D_scan(cost_function, origin, scan_resolution, dir_x,
-                                    dir_y, cost_period, end_points)
+    scan2D_result = perform_2D_scan(
+        cost_function, origin, scan_resolution, dir_x, dir_y, cost_period, end_points
+    )
 
-    fourier_result = perform_Fourier_scan(cost_function, origin, scan_resolution,
-                                          dir_x, dir_y, fourier_period, end_points)
+    fourier_result = perform_Fourier_scan(
+        cost_function, origin, scan_resolution, dir_x, dir_y, fourier_period, end_points
+    )
 
     # Metrics
     metrics_dict = _generate_metrics_dict(scan2D_result, fourier_result, tv)
@@ -177,16 +181,17 @@ def generate_data(
     return scan2D_result, fourier_result, metrics_dict
 
 
-def perform_2D_scan(cost_function: orqviz.aliases.LossFunction,
-                    origin: orqviz.aliases.ParameterVector,
-                    scan_resolution: int,
-                    dir_x: orqviz.aliases.DirectionVector,
-                    dir_y: orqviz.aliases.DirectionVector,
-                    cost_period: List[float],
-                    end_points: Tuple[float, float]):
-
-    dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y = get_scan_variables(
-        dir_x, dir_y, cost_period, end_points
+def perform_2D_scan(
+    cost_function: orqviz.aliases.LossFunction,
+    origin: orqviz.aliases.ParameterVector,
+    scan_resolution: int,
+    dir_x: orqviz.aliases.DirectionVector,
+    dir_y: orqviz.aliases.DirectionVector,
+    cost_period: List[float],
+    end_points: Tuple[float, float],
+):
+    scan2D_end_points_x, scan2D_end_points_y = get_scan_variables(
+        cost_period, end_points
     )
 
     return orqviz.scans.perform_2D_scan(
@@ -200,16 +205,18 @@ def perform_2D_scan(cost_function: orqviz.aliases.LossFunction,
     )
 
 
-def perform_Fourier_scan(cost_function: orqviz.aliases.LossFunction,
-                         origin: orqviz.aliases.ParameterVector,
-                         scan_resolution: int,
-                         dir_x: orqviz.aliases.DirectionVector,
-                         dir_y: orqviz.aliases.DirectionVector,
-                         fourier_period: List[float],
-                         end_points: Tuple[float, float]):
-
-    dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y = get_fourier_plot_variables(
-        dir_x, dir_y, fourier_period, end_points,
+def perform_Fourier_scan(
+    cost_function: orqviz.aliases.LossFunction,
+    origin: orqviz.aliases.ParameterVector,
+    scan_resolution: int,
+    dir_x: orqviz.aliases.DirectionVector,
+    dir_y: orqviz.aliases.DirectionVector,
+    fourier_period: List[float],
+    end_points: Tuple[float, float],
+):
+    scan2D_end_points_x, scan2D_end_points_y = get_fourier_plot_variables(
+        fourier_period,
+        end_points,
     )
 
     # GETTING DATA FOR FOURIER PLOTS
@@ -274,10 +281,11 @@ def load_data(
 def save_hamiltonians(
     hamiltonians_dict: Dict[str, PauliSum], timestamp_str: Optional[str] = None
 ):
-
     if timestamp_str is None:
         timestamp_str = generate_timestamp_str()
-    directory_name = os.path.join(os.path.join(os.getcwd(), f"results/hamiltonians_{timestamp_str}"))
+    directory_name = os.path.join(
+        os.path.join(os.getcwd(), f"results/hamiltonians_{timestamp_str}")
+    )
     # check if directory exists and create it if not
 
     if not os.path.exists(os.path.join(os.getcwd(), "results")):
@@ -314,15 +322,9 @@ def check_and_create_directory(directory_name: str, timestamp_str: str) -> str:
 
 
 def get_scan_variables(
-    dir_x: np.ndarray,
-    dir_y: np.ndarray,
     cost_period: List[float],
     default_end_points: Tuple[float, float],
 ) -> Tuple[np.ndarray, np.ndarray, Tuple[float, float], Tuple[float, float]]:
-
-    dir_x = dir_x / np.linalg.norm(dir_x)
-    dir_y = dir_y / np.linalg.norm(dir_y)
-
     freq_x = (2 * np.pi) / cost_period[0]
     freq_y = (2 * np.pi) / cost_period[1]
     scan2D_end_points_x = (
@@ -334,18 +336,13 @@ def get_scan_variables(
         default_end_points[1] / freq_y,
     )
 
-    return dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y
+    return scan2D_end_points_x, scan2D_end_points_y
 
 
 def get_fourier_plot_variables(
-    dir_x: np.ndarray,
-    dir_y: np.ndarray,
     fourier_period: List[float],
     default_end_points: Tuple[float, float],
 ):
-    dir_x = dir_x / np.linalg.norm(dir_x)
-    dir_y = dir_y / np.linalg.norm(dir_y)
-
     freq_x = (2 * np.pi) / fourier_period[0]
     freq_y = (2 * np.pi) / fourier_period[1]
     scan2D_end_points_x = (
@@ -357,7 +354,7 @@ def get_fourier_plot_variables(
         default_end_points[1] / freq_y,
     )
 
-    return dir_x, dir_y, scan2D_end_points_x, scan2D_end_points_y
+    return scan2D_end_points_x, scan2D_end_points_y
 
 
 def save_scan_results(
