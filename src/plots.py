@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import matplotlib
 import matplotlib.ticker as tck
@@ -28,7 +28,7 @@ def create_plot(
     fix_x_y_extents: bool = False,
     font_size: int = 15,
     figure_dpi: int = 500,
-):
+) -> None:
     """
     fourier_res: maximum frequency to keep on the plot (inclusive), calculated by
         summing up the coefficients of the operator
@@ -69,7 +69,7 @@ def create_plot(
 def remove_constant_term(
     fourier_result: orqviz.fourier.FourierResult,
     scan2D_result: orqviz.scans.Scan2DResult,
-):
+) -> Tuple[orqviz.scans.Scan2DResult, orqviz.fourier.FourierResult]:
     my_values = np.copy(fourier_result.values)
     constant_term = my_values[0][0]
     my_values[0][0] = 0
@@ -87,7 +87,7 @@ def remove_constant_term(
 
 def get_x_y_extents(
     scan2D_result: orqviz.scans.Scan2DResult, fix_x_y_extents: bool = False
-):
+) -> Tuple[float, float]:
     min_x = scan2D_result.params_grid[0][0][0]
     max_x = scan2D_result.params_grid[0][-1][0]
     min_y = scan2D_result.params_grid[0][0][1]
@@ -108,7 +108,7 @@ def get_plot_title(
     include_all_metrics: bool,
     metrics_dict: Dict[str, float],
     plot_title: str = "",
-):
+) -> str:
     if include_all_metrics:
         roughness_label = " \n ".join(
             [f"Roughness index [{k}]: {'%.2f' % v}" for k, v in metrics_dict.items()]
@@ -143,12 +143,12 @@ def plot_scans(
     scan2D_result: orqviz.scans.Scan2DResult,
     fix_x_y_extents: bool = False,
     unit: str = "tau",
-):
+) -> None:
     orqviz.scans.plot_2D_scan_result(scan2D_result, fig, ax)
 
     x_extent, y_extent = get_x_y_extents(scan2D_result, fix_x_y_extents)
 
-    adjust_for_units(ax, unit, x_extent, y_extent)
+    adjust_axis_units(ax, unit, x_extent, y_extent)
 
     ax.tick_params(axis="both", labelsize=15)
     ax.xaxis.set_major_locator(tck.MultipleLocator(base=x_extent / 4))
@@ -157,9 +157,9 @@ def plot_scans(
     ax.set_ylabel("$\\beta$")
 
 
-def adjust_for_units(
+def adjust_axis_units(
     ax: matplotlib.axes.Axes, unit: "str", x_extent: int, y_extent: int
-):
+) -> None:
     if unit == "tau":
         plot_for_tau(ax)
 
@@ -172,7 +172,7 @@ def adjust_for_units(
     ax.yaxis.set_major_locator(tck.MultipleLocator(base=y_extent / 4))
 
 
-def plot_for_tau(ax: matplotlib.axes.Axes):
+def plot_for_tau(ax: matplotlib.axes.Axes) -> None:
     tau = np.pi * 2
     ax.xaxis.set_major_formatter(
         tck.FuncFormatter(
@@ -186,7 +186,7 @@ def plot_for_tau(ax: matplotlib.axes.Axes):
     )
 
 
-def plot_for_pi(ax: matplotlib.axes.Axes):
+def plot_for_pi(ax: matplotlib.axes.Axes) -> None:
     ax.xaxis.set_major_formatter(
         tck.FuncFormatter(
             lambda val, pos: "{:.2f}$\pi$".format(val / np.pi) if val != 0 else "0"
@@ -205,7 +205,7 @@ def plot_fourier(
     fourier_result: orqviz.fourier.FourierResult,
     fourier_res_x: int,
     fourier_res_y: int,
-):
+) -> None:
     orqviz.fourier.plot_2D_fourier_result(
         fourier_result=fourier_result,
         max_freq_x=fourier_res_x,
@@ -235,7 +235,7 @@ def plot_fourier(
 
 def adjust_color_bar(
     ax1: matplotlib.axes.Axes, ax2: matplotlib.axes.Axes, color_bar_font_size: int = 15
-):
+) -> None:
     cbar1 = get_colorbar_from_ax(ax1)
     cbar1.ax.tick_params(labelsize=color_bar_font_size)
     cbar2 = get_colorbar_from_ax(ax2)
