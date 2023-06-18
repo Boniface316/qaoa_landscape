@@ -308,6 +308,7 @@ def get_scan_variables(
     cost_period: List[float],
     default_end_points: Tuple[float, float],
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+
     freq_x = (2 * np.pi) / cost_period[0]
     freq_y = (2 * np.pi) / cost_period[1]
     scan2D_end_points_x = (
