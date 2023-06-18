@@ -254,6 +254,7 @@ def load_data(
     fourier_result = orqviz.io.load_viz_object(
         os.path.join(directory_name, file_label + "_scan_fourier")
     )
+
     with open(os.path.join(directory_name, file_label + "_metrics.json"), "r") as f:
         metrics_dict = json.load(f)
 
@@ -307,6 +308,7 @@ def get_scan_variables(
     cost_period: List[float],
     default_end_points: Tuple[float, float],
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+
     freq_x = (2 * np.pi) / cost_period[0]
     freq_y = (2 * np.pi) / cost_period[1]
     scan2D_end_points_x = (
