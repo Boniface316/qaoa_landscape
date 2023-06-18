@@ -1,15 +1,17 @@
+from typing import Callable
+
 import numpy as np
 
 
-def cost_function_1(pars):
+def cost_function_1(pars: np.ndarray) -> float:
     return np.sin(pars[0]) + np.cos(2 * pars[1])
 
 
-def cost_function_higher_freq(pars):
+def cost_function_higher_freq(pars: np.ndarray) -> float:
     return np.sin(pars[0]) + np.cos(10 * pars[1])
 
 
-def cost_function_higher_value_range(pars):
+def cost_function_higher_value_range(pars: np.ndarray) -> float:
     return cost_function_1(pars) * 3
 
 
@@ -18,8 +20,8 @@ def validate_output_is_real(roughness_measure):
 
 
 def validate_changing_frequency_and_adjusting_period_doesnt_change_roughness(
-    roughness_measure,
-):
+    roughness_measure: Callable,
+) -> None:
     roughnesses_1 = []
     roughnesses_2 = []
     for _ in range(10):
@@ -28,14 +30,16 @@ def validate_changing_frequency_and_adjusting_period_doesnt_change_roughness(
     # For the case where roughness measure is probabilistic
     atol = np.std(roughnesses_1) + np.std(roughnesses_2)
     # For the case where roughness measure is deterministic we set the value as 1%
-    # of the smallest result got, in order to avoid test failing in case of 
+    # of the smallest result got, in order to avoid test failing in case of
     # numerical instabilities.
     if np.isclose(atol, 0):
-        atol = 0.01 * min(roughnesses_1+roughnesses_2)
+        atol = 0.01 * min(roughnesses_1 + roughnesses_2)
     assert np.isclose(np.mean(roughnesses_1), np.mean(roughnesses_2), atol=atol)
 
 
-def validate_changing_value_range_doesnt_change_roughness(roughness_measure):
+def validate_changing_value_range_doesnt_change_roughness(
+    roughness_measure: Callable,
+) -> None:
     roughnesses_1 = []
     roughnesses_2 = []
     for _ in range(10):
@@ -48,7 +52,7 @@ def validate_changing_value_range_doesnt_change_roughness(roughness_measure):
     )
 
 
-def validate_variance_not_too_high(roughness_measure):
+def validate_variance_not_too_high(roughness_measure: Callable) -> None:
     roughnesses = []
     for _ in range(10):
         roughness = roughness_measure(cost_function_1)
