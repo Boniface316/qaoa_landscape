@@ -6,8 +6,6 @@ import networkx as nx
 from orquestra.opt.problems.maxcut import MaxCut
 from orquestra.quantum.operators import PauliSum, PauliTerm
 
-### General generators
-
 
 def single_order_N(n_qubits: int, order: int) -> PauliSum:
     Pauli_sum = PauliSum()
@@ -94,9 +92,6 @@ def assign_weight_for_term(
     return operator
 
 
-# provide a term and and the weight will be assigned to it
-
-
 def assign_percentage_weight_for_term(
     operator: PauliSum, term: PauliTerm, weight: float
 ) -> PauliSum:
@@ -121,9 +116,6 @@ def assign_percentage_weight_for_term(
         operator.terms[location_of_operator].coefficient = new_weight
 
     return operator
-
-
-### Special cases
 
 
 def star_quadratic_terms(n_qubits: int) -> PauliSum:

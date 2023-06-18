@@ -4,9 +4,10 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 import orqviz
 from orquestra.quantum.operators import PauliRepresentation
+from scipy.optimize import OptimizeResult
 
 
-def generate_timestamp_str():
+def generate_timestamp_str() -> str:
     """Create a string in the format <YYYY_MM_DD_HH_mm_ss> capturing the current
     timestamp.
     """
@@ -29,8 +30,6 @@ def _truncate_to_only_positive_frequencies(result: np.ndarray) -> np.ndarray:
 
 
 def _isolate_significant_freqs(array: np.ndarray, threshold_factor=0.1) -> np.ndarray:
-    # threshold = np.median(np.abs(v)) * b
-    # threshold = 1e-2
     threshold = threshold_factor * np.max(np.abs(array))
     significant_freqs = 1 - np.isclose(np.abs(array), 0, atol=threshold)
     return significant_freqs
@@ -91,15 +90,13 @@ def calculate_plot_extents(
 
 
 def isint(x: complex) -> bool:
-    # Returns True if x is an integer, False otherwise.
     return x.real == x and int(x.real) == x.real
 
 
 def optimize_cost_function(
     cost_function: Callable,
     initial_params: Optional[np.ndarray] = None,
-):
-    # Initialize optimization
+) -> OptimizeResult:
     is_finished = False
     exclude_borders = True
     while not is_finished and exclude_borders:
@@ -111,7 +108,6 @@ def optimize_cost_function(
             )
         else:
             exclude_borders = False
-        # Run optimization
         optimizer = ScipyOptimizer(
             "L-BFGS-B",
             bounds=bounds,
