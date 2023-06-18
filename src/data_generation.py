@@ -159,10 +159,6 @@ def generate_data(
     dir_x = dir_x / np.linalg.norm(dir_x)
     dir_y = dir_y / np.linalg.norm(dir_y)
 
-    # GETTING DATA FOR REGULAR PLOTS
-    # Generate the data for the following, using orqviz data structures:
-    # Landscape
-
     scan2D_result = perform_2D_scan(
         cost_function, origin, scan_resolution, dir_x, dir_y, cost_period, end_points
     )
@@ -171,7 +167,6 @@ def generate_data(
         cost_function, origin, scan_resolution, dir_x, dir_y, fourier_period, end_points
     )
 
-    # Metrics
     metrics_dict = _generate_metrics_dict(scan2D_result, fourier_result, tv)
 
     save_scan_results(
@@ -243,22 +238,9 @@ def _generate_metrics_dict(
     fourier_result: orqviz.fourier.FourierResult,
     tv: float,
 ) -> Dict[str, float]:
-    # If there is a custom plot period, this fourier result input will not be with the
-    # lowest possible frequencies of this coefficient. thus the non-sparsity metrics
-    # wil be wrong.
-    # tv_from_scan = roughness_tv_from_scan(scan2D_result)
-    # fourier_max, fourier_mean = roughness_fourier_enrico_2d(fourier_result)
-    # sparsity = roughness_fourier_sparsity(fourier_result)
     sparsity_from_norm = roughness_fourier_sparsity_using_norms(fourier_result)
     return {
         "tv": tv,
-        # "tv stdev over mean": tv_stdev_over_mean,
-        # "tv mean globally normalized": tv_mean_global_norm,
-        # "tv stdev over mean globally normalized": tb_stdev_global_norm,
-        # "tv from scan": tv_from_scan,
-        # "fourier max": fourier_max,
-        # "fourier mean": fourier_mean,
-        # "fourier sparsity": sparsity,
         "fourier density using norms": sparsity_from_norm,
     }
 
@@ -272,6 +254,7 @@ def load_data(
     fourier_result = orqviz.io.load_viz_object(
         os.path.join(directory_name, file_label + "_scan_fourier")
     )
+
     with open(os.path.join(directory_name, file_label + "_metrics.json"), "r") as f:
         metrics_dict = json.load(f)
 
@@ -324,7 +307,7 @@ def check_and_create_directory(directory_name: str, timestamp_str: str) -> str:
 def get_scan_variables(
     cost_period: List[float],
     default_end_points: Tuple[float, float],
-) -> Tuple[np.ndarray, np.ndarray, Tuple[float, float], Tuple[float, float]]:
+) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     freq_x = (2 * np.pi) / cost_period[0]
     freq_y = (2 * np.pi) / cost_period[1]
     scan2D_end_points_x = (
@@ -342,7 +325,7 @@ def get_scan_variables(
 def get_fourier_plot_variables(
     fourier_period: List[float],
     default_end_points: Tuple[float, float],
-):
+) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     freq_x = (2 * np.pi) / fourier_period[0]
     freq_y = (2 * np.pi) / fourier_period[1]
     scan2D_end_points_x = (
