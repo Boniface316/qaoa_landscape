@@ -207,7 +207,7 @@ def plot_fourier(
     fourier_res_y: int,
 ) -> None:
     orqviz.fourier.plot_2D_fourier_result(
-        fourier_result=fourier_result,
+        result=fourier_result,
         max_freq_x=fourier_res_x,
         max_freq_y=fourier_res_y,
         fig=fig,

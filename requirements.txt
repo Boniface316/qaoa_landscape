@@ -1,5 +1,5 @@
 # for the following libraries: the latest version from github as of this writing (not released yet)
-git+https://github.com/zapatacomputing/orqviz@a47764d6154d701ab040fac91d4b232b5bb9bb25#egg=orqviz
+orqviz
 orquestra-vqa
 numdifftools
 boto3
