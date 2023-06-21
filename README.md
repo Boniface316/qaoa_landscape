@@ -1,4 +1,6 @@
-# Connecting the Hamiltonian structure to the QAOA energy and Fourier landscape structure by [Michał Stęchły](@mstechly), [Laura Gao](@laurgao), [Matthew S. Rudolph](@MSRudolph), [Enrico Fontana](@e-font) and [Boniface Yogendran](@Boniface316).
+# Connecting the Hamiltonian structure to the QAOA energy and Fourier landscape structure
+
+Authors: [Michał Stęchły](https://github.com/mstechly), [Laura Gao](https://github.com/laurgao), [Manuel S. Rudolph](https://github.com/MSRudolph), [Enrico Fontana](https://github.com/e-font) and [Boniface Yogendran](https://github.com/Boniface316).
 
 This repository contains the code required to reproduce the results presented in the paper titled "Connecting the Hamiltonian structure to the QAOA energy and Fourier landscape structure." The paper is available on arXiv: [arXiv:2305.13594](https://arxiv.org/abs/2305.13594).
 
@@ -14,4 +16,4 @@ We encourage you to explore the code and modify it to suit your needs. Experimen
 
 If you need more materials to understand how to use `Orqviz` package to visualize Fourier landscapes, please refer to the [Orqviz Fourier transform notebook](https://github.com/zapatacomputing/orqviz/blob/main/docs/examples/fourier_transform.ipynb).
 
-We hope you find this repository useful and that it helps in understanding the Hamiltonian structure in relation to the QAOA energy and Fourier landscape structure.
+We hope you find this repository useful and that it will help in understanding the relation between Hamiltonian energy and Fourier landscapes for QAOA.
